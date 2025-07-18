@@ -19,7 +19,7 @@ const startServer = async () => {
     handleConnectionEvents();
     
     // Conectar a MongoDB
-    console.log('🔄 Conectando a MongoDB...');
+    console.log('🔄 Connecting to MongoDB...');
     await connectDB();
     
     // Iniciar el servidor HTTP
@@ -38,23 +38,23 @@ const startServer = async () => {
      * Función para cerrar el servidor elegantemente
      */
     const gracefulShutdown = (signal) => {
-      console.log(`\n⚠️  Señal ${signal} recibida. Iniciando cierre elegante...`);
+      console.log(`\n⚠️  Señal ${signal} Received. Closing beginning...`);
       
       server.close((err) => {
         if (err) {
-          console.error('❌ Error al cerrar el servidor:', err.message);
+          console.error('❌ Error closing server:', err.message);
           process.exit(1);
         }
         
-        console.log('✅ Servidor HTTP cerrado correctamente');
-        console.log('🔄 Cerrando conexiones a la base de datos...');
+        console.log('✅ HTTP server successfully closed');
+        console.log('🔄 Closing database connections...');
         
         process.exit(0);
       });
       
       // Forzar cierre después de 10 segundos
       setTimeout(() => {
-        console.error('⏰ Tiempo agotado. Forzando cierre...');
+        console.error('⏰ Timeout. Forcing closure....');
         process.exit(1);
       }, 10000);
     };
@@ -66,13 +66,13 @@ const startServer = async () => {
     return server;
     
   } catch (error) {
-    console.error('❌ Error al iniciar el servidor:');
+    console.error('❌ Error starting the server:');
     console.error(error.message);
-    console.error('🔄 Reintentando en 5 segundos...');
+    console.error('🔄 Retrying in 5 seconds...');
     
     // Reintentar conexión después de 5 segundos
     setTimeout(() => {
-      console.log('🔄 Reintentando conexión...');
+      console.log('🔄 Retrying connection...');
       startServer();
     }, 5000);
   }
@@ -82,7 +82,7 @@ const startServer = async () => {
  * Manejo de errores globales no capturados
  */
 process.on('unhandledRejection', (err, promise) => {
-  console.error('🚨 Promesa rechazada no manejada:');
+  console.error('🚨 Promise rejected not handled:');
   console.error('Error:', err.message);
   
   if (process.env.NODE_ENV === 'development') {
@@ -91,10 +91,10 @@ process.on('unhandledRejection', (err, promise) => {
   
   // En producción, cerrar la aplicación; en desarrollo, solo advertir
   if (process.env.NODE_ENV === 'production') {
-    console.log('🔄 Cerrando servidor debido a promesa rechazada...');
+    console.log('🔄 Closing server due to rejected promise...');
     process.exit(1);
   } else {
-    console.log('⚠️  Continuando en modo desarrollo...');
+    console.log('⚠️ Continuing in development mode...');
   }
 });
 
@@ -102,14 +102,14 @@ process.on('unhandledRejection', (err, promise) => {
  * Manejo de excepciones no capturadas
  */
 process.on('uncaughtException', (err) => {
-  console.error('🚨 Excepción no capturada:');
+  console.error('🚨 Uncaught exception:');
   console.error('Error:', err.message);
   
   if (process.env.NODE_ENV === 'development') {
     console.error('Stack trace:', err.stack);
   }
   
-  console.log('🔄 Cerrando aplicación...');
+  console.log('🔄 Closing application...');
   process.exit(1);
 });
 
@@ -131,19 +131,19 @@ const checkEnvironmentVariables = () => {
     missingVars.forEach(varName => {
       console.error(`   - ${varName}`);
     });
-    console.error('💡 Asegúrate de crear un archivo .env con todas las variables necesarias');
+    console.error('💡 Make sure you create a .env file with all the necessary variables');
     process.exit(1);
   }
   
-  console.log('✅ Variables de entorno verificadas');
+  console.log('✅ Verified environment variables');
 };
 
 /**
  * Función principal de inicialización
  */
 const initialize = async () => {
-  console.log('🚀 BIBLIOTECA DIGITAL API');
-  console.log('📚 Sistema de gestión de biblioteca');
+  console.log('🚀 API DIGITAL LIBRARY');
+  console.log('📚 Library management system');
   console.log('────────────────────────────────────────');
   
   // Verificar variables de entorno
@@ -156,7 +156,7 @@ const initialize = async () => {
 // Solo ejecutar si este archivo es el principal
 if (require.main === module) {
   initialize().catch(error => {
-    console.error('❌ Error fatal al inicializar la aplicación:');
+    console.error('❌ Fatal error initializing application:');
     console.error(error.message);
     process.exit(1);
   });

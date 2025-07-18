@@ -36,7 +36,7 @@ const limiter = rateLimit({
   max: 100, // Máximo 100 peticiones por IP
   message: {
     success: false,
-    message: 'Demasiadas peticiones. Intenta de nuevo en 15 minutos.'
+    message: 'Too many requests. Please try again in 15 minutes.'
   }
 });
 
@@ -66,7 +66,7 @@ if (process.env.NODE_ENV === 'development') {
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'API de Biblioteca Digital funcionando correctamente',
+    message: 'Digital Library API working correctly',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development'
@@ -77,7 +77,7 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Bienvenido a la API de Biblioteca Digital',
+    message: 'Welcome to the Digital Library API',
     version: '1.0.0',
     endpoints: {
       categories: '/api/categories',
