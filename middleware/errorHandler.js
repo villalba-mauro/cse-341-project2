@@ -47,7 +47,7 @@ const handleMongoError = (error) => {
     statusCode = 400;
     return {
       statusCode,
-      message: 'ID proporcionado no es válido',
+      message: 'The provided ID is not valido',
       field: error.path,
       value: error.value
     };
@@ -58,7 +58,7 @@ const handleMongoError = (error) => {
     statusCode = 404;
     return {
       statusCode,
-      message: 'Documento no encontrado'
+      message: 'Document not found'
     };
   }
 
