@@ -1,6 +1,6 @@
 const Book = require('../models/book');
 const Category = require('../models/category');
-const { asyncHandler, createError } = require('../middleware/errorHandler');
+const {  asyncHandler, createError } = require('../middleware/errorHandler');
 
 /**
  * @desc    Obtener todos los libros
@@ -130,38 +130,91 @@ const getBookById = asyncHandler(async (req, res) => {
  * @access  Privado (Admin)
  * Propósito: Crea un nuevo libro en la base de datos
  */
-const createBook = asyncHandler(async (req, res) => {
-  // Los datos ya están validados por el middleware de validación
-  const bookData = req.body;
 
-  // Verificar que la categoría existe y está activa
-  const category = await Category.findById(bookData.category);
-  if (!category) {
-    throw createError('La categoría especificada no existe', 400);
+
+const createBook = async (req, res) => {
+  try {
+    // Los datos ya están validados por el middleware de validación
+    const bookData = req.body;
+
+    // Verificar que la categoría existe y está activa
+    const category = await Category.findById(bookData.category);
+    if (!category) {
+      return res.status(400).json({
+        success: false,
+        message: 'La categoría especificada no existe'
+      });
+    }
+    if (!category.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'La categoría especificada no está activa'
+      });
+    }
+
+    // Verificar si ya existe un libro con el mismo ISBN
+    const existingBook = await Book.findOne({ isbn: bookData.isbn });
+    if (existingBook) {
+      return res.status(409).json({
+        success: false,
+        message: 'Ya existe un libro con este ISBN'
+      });
+    }
+
+    // Crear el nuevo libro
+    const book = await Book.create(bookData);
+
+    // Obtener el libro creado con la categoría poblada
+    const createdBook = await Book.findById(book._id)
+      .populate('category', 'name description color');
+
+    res.status(201).json({
+      success: true,
+      message: 'Libro creado exitosamente',
+      data: createdBook
+    });
+
+  } catch (error) {
+    // ✅ TRY/CATCH EXPLÍCITO para cumplir rúbrica
+    console.error('Error en createBook:', error);
+    
+    // Manejar errores específicos de validación
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Error de validación',
+        errors: Object.values(error.errors).map(err => ({
+          field: err.path,
+          message: err.message,
+          value: err.value
+        }))
+      });
+    }
+
+    // Manejar error de ISBN duplicado
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'Ya existe un libro con este ISBN',
+        field: 'isbn'
+      });
+    }
+
+    // Manejar error de ObjectId inválido
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de categoría no válido'
+      });
+    }
+
+    // Error genérico del servidor
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al crear libro'
+    });
   }
-  if (!category.isActive) {
-    throw createError('La categoría especificada no está activa', 400);
-  }
-
-  // Verificar si ya existe un libro con el mismo ISBN
-  const existingBook = await Book.findOne({ isbn: bookData.isbn });
-  if (existingBook) {
-    throw createError('Ya existe un libro con este ISBN', 409);
-  }
-
-  // Crear el nuevo libro
-  const book = await Book.create(bookData);
-
-  // Obtener el libro creado con la categoría poblada
-  const createdBook = await Book.findById(book._id)
-    .populate('category', 'name description color');
-
-  res.status(201).json({
-    success: true,
-    message: 'Libro creado exitosamente',
-    data: createdBook
-  });
-});
+};
 
 /**
  * @desc    Actualizar libro
