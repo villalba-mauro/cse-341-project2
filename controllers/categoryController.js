@@ -54,6 +54,11 @@ const getCategories = async (req, res) => {
 
   } catch (error) {
     console.error('Error en getCategories:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener categorías'
@@ -86,6 +91,10 @@ const getCategoryById = async (req, res) => {
 
   } catch (error) {
     console.error('Error en getCategoryById:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
     
     if (error.name === 'CastError') {
       return res.status(400).json({
@@ -134,6 +143,10 @@ const createCategory = async (req, res) => {
 
   } catch (error) {
     console.error('Error en createCategory:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
     
     if (error.name === 'ValidationError') {
       return res.status(400).json({
@@ -210,6 +223,10 @@ const updateCategory = async (req, res) => {
   } catch (error) {
     console.error('Error en updateCategory:', error);
     
+    if (res.headersSent) {
+      return;
+    }
+    
     if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
@@ -282,6 +299,10 @@ const deleteCategory = async (req, res) => {
   } catch (error) {
     console.error('Error en deleteCategory:', error);
     
+    if (res.headersSent) {
+      return;
+    }
+    
     if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
@@ -314,6 +335,11 @@ const getActiveCategories = async (req, res) => {
 
   } catch (error) {
     console.error('Error en getActiveCategories:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener categorías activas'
@@ -353,6 +379,10 @@ const toggleCategoryStatus = async (req, res) => {
 
   } catch (error) {
     console.error('Error en toggleCategoryStatus:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
     
     if (error.name === 'CastError') {
       return res.status(400).json({
@@ -429,6 +459,11 @@ const getCategoryStats = async (req, res) => {
 
   } catch (error) {
     console.error('Error en getCategoryStats:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener estadísticas de categorías'

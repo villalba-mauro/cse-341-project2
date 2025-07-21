@@ -1,6 +1,6 @@
 const Book = require('../models/book');
 const Category = require('../models/category');
-const {createError } = require('../middleware/errorHandler');
+const { createError } = require('../middleware/errorHandler');
 
 /**
  * @desc    Obtener todos los libros
@@ -8,101 +8,80 @@ const {createError } = require('../middleware/errorHandler');
  * @access  Público
  * Propósito: Lista todos los libros con opciones avanzadas de filtrado, búsqueda y paginación
  */
-
 const getBooks = async (req, res) => {
   try {
-    // ... todo tu código actual de getBooks aquí ...
+    // Extraer parámetros de consulta (ya validados por middleware)
     const { 
-    page = 1, 
-    limit = 10, 
-    sort = '-createdAt',
-    search,
-    category,
-    status,
-    minPrice,
-    maxPrice,
-    language,
-    isFeatured
-  } = req.query;
-
-  // Construir filtros de búsqueda
-  const filters = {};
-
-  // Filtro de búsqueda por texto (título, autor, descripción)
-  if (search) {
-    filters.$or = [
-      { title: { $regex: search, $options: 'i' } },
-      { author: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } }
-    ];
-  }
-
-  // Filtro por categoría
-  if (category) {
-    filters.category = category;
-  }
-
-  // Filtro por estado
-  if (status) {
-    filters.status = status;
-  }
-
-  // Filtro por rango de precios
-  if (minPrice || maxPrice) {
-    filters.price = {};
-    if (minPrice) filters.price.$gte = parseFloat(minPrice);
-    if (maxPrice) filters.price.$lte = parseFloat(maxPrice);
-  }
-
-  // Filtro por idioma
-  if (language) {
-    filters.language = language;
-  }
-
-  // Filtro por libros destacados
-  if (isFeatured !== undefined) {
-    filters.isFeatured = isFeatured === 'true';
-  }
-
-  // Configurar paginación
-  const skip = (page - 1) * limit;
-
-  // Ejecutar consulta con paginación y población de referencias
-  const [books, total] = await Promise.all([
-    Book.find(filters)
-      .populate('category', 'name description color') // Incluir datos de categoría
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit)),
-    Book.countDocuments(filters)
-  ]);
-
-  // Calcular información de paginación
-  const totalPages = Math.ceil(total / limit);
-  const hasNextPage = page < totalPages;
-  const hasPrevPage = page > 1;
-
-  res.status(200).json({
-    success: true,
-    message: 'Libros obtenidos exitosamente',
-    data: books,
-    pagination: {
-      currentPage: parseInt(page),
-      totalPages,
-      totalItems: total,
-      itemsPerPage: parseInt(limit),
-      hasNextPage,
-      hasPrevPage
-    },
-    filters: {
+      page = 1, 
+      limit = 10, 
+      sort = '-createdAt',
       search,
       category,
       status,
-      priceRange: { min: minPrice, max: maxPrice },
+      minPrice,
+      maxPrice,
       language,
       isFeatured
+    } = req.query;
+
+    // Construir filtros de búsqueda
+    const filters = {};
+
+    // Filtro de búsqueda por texto (título, autor, descripción)
+    if (search) {
+      filters.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { author: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
-  });
+
+    // Filtro por categoría
+    if (category) {
+      filters.category = category;
+    }
+
+    // Filtro por estado
+    if (status) {
+      filters.status = status;
+    }
+
+    // Filtro por rango de precios
+    if (minPrice || maxPrice) {
+      filters.price = {};
+      if (minPrice) filters.price.$gte = parseFloat(minPrice);
+      if (maxPrice) filters.price.$lte = parseFloat(maxPrice);
+    }
+
+    // Filtro por idioma
+    if (language) {
+      filters.language = language;
+    }
+
+    // Filtro por libros destacados
+    if (isFeatured !== undefined) {
+      filters.isFeatured = isFeatured === 'true';
+    }
+
+    // Configurar paginación
+    const skip = (page - 1) * limit;
+
+    // Ejecutar consulta con paginación y población de referencias
+    const [books, total] = await Promise.all([
+      Book.find(filters)
+        .populate('category', 'name description color') // Incluir datos de categoría
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Book.countDocuments(filters)
+    ]);
+
+    // Calcular información de paginación
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    // ✅ ENVIAR RESPUESTA UNA SOLA VEZ
     res.status(200).json({
       success: true,
       message: 'Libros obtenidos exitosamente',
@@ -127,6 +106,11 @@ const getBooks = async (req, res) => {
 
   } catch (error) {
     console.error('Error en getBooks:', error);
+    
+    if (res.headersSent) {
+      return; // No enviar respuesta si ya se envió
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error al obtener libros'
@@ -134,14 +118,12 @@ const getBooks = async (req, res) => {
   }
 };
 
-
 /**
  * @desc    Obtener un libro por ID
  * @route   GET /api/books/:id
  * @access  Público
  * Propósito: Obtiene un libro específico con información detallada
  */
-
 const getBookById = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id)
@@ -163,6 +145,10 @@ const getBookById = async (req, res) => {
   } catch (error) {
     console.error('Error en getBookById:', error);
     
+    if (res.headersSent) {
+      return;
+    }
+    
     if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
@@ -177,15 +163,12 @@ const getBookById = async (req, res) => {
   }
 };
 
-
 /**
  * @desc    Crear nuevo libro
  * @route   POST /api/books
  * @access  Privado (Admin)
  * Propósito: Crea un nuevo libro en la base de datos
  */
-
-
 const createBook = async (req, res) => {
   try {
     // Los datos ya están validados por el middleware de validación
@@ -229,8 +212,11 @@ const createBook = async (req, res) => {
     });
 
   } catch (error) {
-    // ✅ TRY/CATCH EXPLÍCITO para cumplir rúbrica
     console.error('Error en createBook:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
     
     // Manejar errores específicos de validación
     if (error.name === 'ValidationError') {
@@ -336,6 +322,10 @@ const updateBook = async (req, res) => {
   } catch (error) {
     console.error('Error en updateBook:', error);
     
+    if (res.headersSent) {
+      return;
+    }
+    
     if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
@@ -360,7 +350,6 @@ const updateBook = async (req, res) => {
     });
   }
 };
-
 
 /**
  * @desc    Eliminar libro
@@ -395,6 +384,10 @@ const deleteBook = async (req, res) => {
   } catch (error) {
     console.error('Error en deleteBook:', error);
     
+    if (res.headersSent) {
+      return;
+    }
+    
     if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
@@ -415,25 +408,30 @@ const deleteBook = async (req, res) => {
  * @access  Público
  * Propósito: Obtiene solo los libros que están disponibles para venta
  */
-
-
 const getAvailableBooks = async (req, res) => {
-  try{
-  const books = await Book.findAvailable();
+  try {
+    const books = await Book.findAvailable();
 
-  res.status(200).json({
-    success: true,
-    message: 'Libros disponibles obtenidos exitosamente',
-    data: books,
-    count: books.length
-  });
-  }catch(error){
-    console.error('Error en [getAvailableBooks]:', error);
+    res.status(200).json({
+      success: true,
+      message: 'Libros disponibles obtenidos exitosamente',
+      data: books,
+      count: books.length
+    });
+
+  } catch (error) {
+    console.error('Error en getAvailableBooks:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
+    
     res.status(500).json({
-    success: false,
-    message: 'Error interno del servidor'});
-  };
-}
+      success: false,
+      message: 'Error al obtener libros disponibles'
+    });
+  }
+};
 
 /**
  * @desc    Obtener libros por categoría
@@ -442,36 +440,52 @@ const getAvailableBooks = async (req, res) => {
  * Propósito: Obtiene libros de una categoría específica
  */
 const getBooksByCategory = async (req, res) => {
-
-  try{
+  try {
     const { categoryId } = req.params;
 
-  // Verificar que la categoría existe
-  const category = await Category.findById(categoryId);
-  if (!category) {
-    throw createError('Categoría no encontrada', 404);
-  }
+    // Verificar que la categoría existe
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Categoría no encontrada'
+      });
+    }
 
-  const books = await Book.findByCategory(categoryId);
+    const books = await Book.findByCategory(categoryId);
 
-  res.status(200).json({
-    success: true,
-    message: `Libros de la categoría "${category.name}" obtenidos exitosamente`,
-    data: books,
-    category: {
-      id: category._id,
-      name: category.name,
-      description: category.description
-    },
-    count: books.length
-  });
-  }catch{
-    console.error('Error en [getBooksByCategory]:', error);
+    res.status(200).json({
+      success: true,
+      message: `Libros de la categoría "${category.name}" obtenidos exitosamente`,
+      data: books,
+      category: {
+        id: category._id,
+        name: category.name,
+        description: category.description
+      },
+      count: books.length
+    });
+
+  } catch (error) {
+    console.error('Error en getBooksByCategory:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de categoría no válido'
+      });
+    }
+    
     res.status(500).json({
-    success: false,
-    message: 'Error interno del servidor'});
-  };
-}
+      success: false,
+      message: 'Error al obtener libros por categoría'
+    });
+  }
+};
 
 /**
  * @desc    Obtener libros destacados
@@ -480,23 +494,30 @@ const getBooksByCategory = async (req, res) => {
  * Propósito: Obtiene libros marcados como destacados
  */
 const getFeaturedBooks = async (req, res) => {
-  try{
+  try {
     const books = await Book.find({ isFeatured: true })
-    .populate('category', 'name description color')
-    .sort({ averageRating: -1, reviewCount: -1 })
-    .limit(10);
+      .populate('category', 'name description color')
+      .sort({ averageRating: -1, reviewCount: -1 })
+      .limit(10);
 
-  res.status(200).json({
-    success: true,
-    message: 'Libros destacados obtenidos exitosamente',
-    data: books,
-    count: books.length
-  });
-  }catch{
-    console.error('Error en [getFeaturedBooks]:', error);
+    res.status(200).json({
+      success: true,
+      message: 'Libros destacados obtenidos exitosamente',
+      data: books,
+      count: books.length
+    });
+
+  } catch (error) {
+    console.error('Error en getFeaturedBooks:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
+    
     res.status(500).json({
-    success: false,
-    message: 'Error interno del servidor'});
+      success: false,
+      message: 'Error al obtener libros destacados'
+    });
   }
 };
 
@@ -507,47 +528,53 @@ const getFeaturedBooks = async (req, res) => {
  * Propósito: Búsqueda avanzada de libros por texto
  */
 const searchBooks = async (req, res) => {
-  try{
-      const { searchTerm } = req.params;
-  const { category, minPrice, maxPrice, language } = req.query;
+  try {
+    const { searchTerm } = req.params;
+    const { category, minPrice, maxPrice, language } = req.query;
 
-  // Construir filtros
-  const filters = {
-    $or: [
-      { title: { $regex: searchTerm, $options: 'i' } },
-      { author: { $regex: searchTerm, $options: 'i' } },
-      { description: { $regex: searchTerm, $options: 'i' } }
-    ]
-  };
+    // Construir filtros
+    const filters = {
+      $or: [
+        { title: { $regex: searchTerm, $options: 'i' } },
+        { author: { $regex: searchTerm, $options: 'i' } },
+        { description: { $regex: searchTerm, $options: 'i' } }
+      ]
+    };
 
-  // Aplicar filtros adicionales
-  if (category) filters.category = category;
-  if (language) filters.language = language;
-  if (minPrice || maxPrice) {
-    filters.price = {};
-    if (minPrice) filters.price.$gte = parseFloat(minPrice);
-    if (maxPrice) filters.price.$lte = parseFloat(maxPrice);
-  }
+    // Aplicar filtros adicionales
+    if (category) filters.category = category;
+    if (language) filters.language = language;
+    if (minPrice || maxPrice) {
+      filters.price = {};
+      if (minPrice) filters.price.$gte = parseFloat(minPrice);
+      if (maxPrice) filters.price.$lte = parseFloat(maxPrice);
+    }
 
-  const books = await Book.find(filters)
-    .populate('category', 'name description color')
-    .sort({ title: 1 });
+    const books = await Book.find(filters)
+      .populate('category', 'name description color')
+      .sort({ title: 1 });
 
-  res.status(200).json({
-    success: true,
-    message: `Resultados de búsqueda para: "${searchTerm}"`,
-    data: books,
-    searchTerm,
-    count: books.length
-  });
-  }catch{
-    console.error('Error en [searchBooks]:', error);
+    res.status(200).json({
+      success: true,
+      message: `Resultados de búsqueda para: "${searchTerm}"`,
+      data: books,
+      searchTerm,
+      count: books.length
+    });
+
+  } catch (error) {
+    console.error('Error en searchBooks:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
+    
     res.status(500).json({
-    success: false,
-    message: 'Error interno del servidor'});
-  };
-
-}
+      success: false,
+      message: 'Error en búsqueda de libros'
+    });
+  }
+};
 
 /**
  * @desc    Actualizar stock de libro
@@ -556,15 +583,18 @@ const searchBooks = async (req, res) => {
  * Propósito: Actualiza el stock de un libro específico
  */
 const updateBookStock = async (req, res) => {
-  const { id } = req.params;
-  const { quantity, operation } = req.body; // operation: 'add' | 'reduce' | 'set'
-
-  const book = await Book.findById(id);
-  if (!book) {
-    throw createError('Libro no encontrado', 404);
-  }
-
   try {
+    const { id } = req.params;
+    const { quantity, operation } = req.body; // operation: 'add' | 'reduce' | 'set'
+
+    const book = await Book.findById(id);
+    if (!book) {
+      return res.status(404).json({
+        success: false,
+        message: 'Libro no encontrado'
+      });
+    }
+
     switch (operation) {
       case 'add':
         await book.addStock(quantity);
@@ -577,7 +607,10 @@ const updateBookStock = async (req, res) => {
         await book.save();
         break;
       default:
-        throw createError('Operación no válida. Use: add, reduce, o set', 400);
+        return res.status(400).json({
+          success: false,
+          message: 'Operación no válida. Use: add, reduce, o set'
+        });
     }
 
     // Obtener el libro actualizado
@@ -594,8 +627,25 @@ const updateBookStock = async (req, res) => {
         newStock: updatedBook.stock
       }
     });
+
   } catch (error) {
-    throw createError(error.message, 400);
+    console.error('Error en updateBookStock:', error);
+    
+    if (res.headersSent) {
+      return;
+    }
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID proporcionado no es válido'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar stock'
+    });
   }
 };
 
@@ -605,81 +655,95 @@ const updateBookStock = async (req, res) => {
  * @access  Privado (Admin)
  * Propósito: Obtiene estadísticas generales de los libros
  */
-const getBookStats = (async (req, res) => {
-  const [
-    totalBooks,
-    availableBooks,
-    outOfStockBooks,
-    featuredBooks,
-    avgPrice,
-    totalValue
-  ] = await Promise.all([
-    Book.countDocuments({}),
-    Book.countDocuments({ status: 'disponible', stock: { $gt: 0 } }),
-    Book.countDocuments({ status: 'agotado' }),
-    Book.countDocuments({ isFeatured: true }),
-    Book.aggregate([{ $group: { _id: null, avgPrice: { $avg: '$price' } } }]),
-    Book.aggregate([{ $group: { _id: null, totalValue: { $sum: { $multiply: ['$price', '$stock'] } } } }])
-  ]);
+const getBookStats = async (req, res) => {
+  try {
+    const [
+      totalBooks,
+      availableBooks,
+      outOfStockBooks,
+      featuredBooks,
+      avgPrice,
+      totalValue
+    ] = await Promise.all([
+      Book.countDocuments({}),
+      Book.countDocuments({ status: 'disponible', stock: { $gt: 0 } }),
+      Book.countDocuments({ status: 'agotado' }),
+      Book.countDocuments({ isFeatured: true }),
+      Book.aggregate([{ $group: { _id: null, avgPrice: { $avg: '$price' } } }]),
+      Book.aggregate([{ $group: { _id: null, totalValue: { $sum: { $multiply: ['$price', '$stock'] } } } }])
+    ]);
 
-  // Obtener libros más populares (por rating)
-  const topRatedBooks = await Book.find({ reviewCount: { $gt: 0 } })
-    .populate('category', 'name')
-    .sort({ averageRating: -1, reviewCount: -1 })
-    .limit(5)
-    .select('title author averageRating reviewCount');
+    // Obtener libros más populares (por rating)
+    const topRatedBooks = await Book.find({ reviewCount: { $gt: 0 } })
+      .populate('category', 'name')
+      .sort({ averageRating: -1, reviewCount: -1 })
+      .limit(5)
+      .select('title author averageRating reviewCount');
 
-  // Distribución por categorías
-  const categoryDistribution = await Book.aggregate([
-    {
-      $group: {
-        _id: '$category',
-        count: { $sum: 1 },
-        totalValue: { $sum: { $multiply: ['$price', '$stock'] } }
-      }
-    },
-    {
-      $lookup: {
-        from: 'categories',
-        localField: '_id',
-        foreignField: '_id',
-        as: 'category'
-      }
-    },
-    {
-      $unwind: '$category'
-    },
-    {
-      $project: {
-        categoryName: '$category.name',
-        count: 1,
-        totalValue: 1
-      }
-    },
-    {
-      $sort: { count: -1 }
-    }
-  ]);
-
-  res.status(200).json({
-    success: true,
-    message: 'Estadísticas de libros obtenidas exitosamente',
-    data: {
-      totals: {
-        total: totalBooks,
-        available: availableBooks,
-        outOfStock: outOfStockBooks,
-        featured: featuredBooks
+    // Distribución por categorías
+    const categoryDistribution = await Book.aggregate([
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+          totalValue: { $sum: { $multiply: ['$price', '$stock'] } }
+        }
       },
-      financial: {
-        averagePrice: avgPrice[0]?.avgPrice || 0,
-        totalInventoryValue: totalValue[0]?.totalValue || 0
+      {
+        $lookup: {
+          from: 'categories',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'category'
+        }
       },
-      topRated: topRatedBooks,
-      categoryDistribution
+      {
+        $unwind: '$category'
+      },
+      {
+        $project: {
+          categoryName: '$category.name',
+          count: 1,
+          totalValue: 1
+        }
+      },
+      {
+        $sort: { count: -1 }
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Estadísticas de libros obtenidas exitosamente',
+      data: {
+        totals: {
+          total: totalBooks,
+          available: availableBooks,
+          outOfStock: outOfStockBooks,
+          featured: featuredBooks
+        },
+        financial: {
+          averagePrice: avgPrice[0]?.avgPrice || 0,
+          totalInventoryValue: totalValue[0]?.totalValue || 0
+        },
+        topRated: topRatedBooks,
+        categoryDistribution
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en getBookStats:', error);
+    
+    if (res.headersSent) {
+      return;
     }
-  });
-});
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener estadísticas de libros'
+    });
+  }
+};
 
 module.exports = {
   getBooks,
