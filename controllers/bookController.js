@@ -1,6 +1,6 @@
 const Book = require('../models/book');
 const Category = require('../models/category');
-const {  asyncHandler, createError } = require('../middleware/errorHandler');
+const {createError } = require('../middleware/errorHandler');
 
 /**
  * @desc    Obtener todos los libros
@@ -8,9 +8,11 @@ const {  asyncHandler, createError } = require('../middleware/errorHandler');
  * @access  Público
  * Propósito: Lista todos los libros con opciones avanzadas de filtrado, búsqueda y paginación
  */
-const getBooks = asyncHandler(async (req, res) => {
-  // Extraer parámetros de consulta (ya validados por middleware)
-  const { 
+
+const getBooks = async (req, res) => {
+  try {
+    // ... todo tu código actual de getBooks aquí ...
+    const { 
     page = 1, 
     limit = 10, 
     sort = '-createdAt',
@@ -101,7 +103,37 @@ const getBooks = asyncHandler(async (req, res) => {
       isFeatured
     }
   });
-});
+    res.status(200).json({
+      success: true,
+      message: 'Libros obtenidos exitosamente',
+      data: books,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalItems: total,
+        itemsPerPage: parseInt(limit),
+        hasNextPage,
+        hasPrevPage
+      },
+      filters: {
+        search,
+        category,
+        status,
+        priceRange: { min: minPrice, max: maxPrice },
+        language,
+        isFeatured
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en getBooks:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener libros'
+    });
+  }
+};
+
 
 /**
  * @desc    Obtener un libro por ID
@@ -109,20 +141,42 @@ const getBooks = asyncHandler(async (req, res) => {
  * @access  Público
  * Propósito: Obtiene un libro específico con información detallada
  */
-const getBookById = asyncHandler(async (req, res) => {
-  const book = await Book.findById(req.params.id)
-    .populate('category', 'name description color');
 
-  if (!book) {
-    throw createError('Libro no encontrado', 404);
+const getBookById = async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id)
+      .populate('category', 'name description color');
+
+    if (!book) {
+      return res.status(404).json({
+        success: false,
+        message: 'Libro no encontrado'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Libro obtenido exitosamente',
+      data: book
+    });
+
+  } catch (error) {
+    console.error('Error en getBookById:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de libro no válido'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener libro'
+    });
   }
+};
 
-  res.status(200).json({
-    success: true,
-    message: 'Libro obtenido exitosamente',
-    data: book
-  });
-});
 
 /**
  * @desc    Crear nuevo libro
@@ -222,54 +276,91 @@ const createBook = async (req, res) => {
  * @access  Privado (Admin)
  * Propósito: Actualiza un libro existente
  */
-const updateBook = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const updateData = req.body;
+const updateBook = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
 
-  // Verificar si el libro existe
-  let book = await Book.findById(id);
-  if (!book) {
-    throw createError('Libro no encontrado', 404);
-  }
-
-  // Si se está actualizando la categoría, verificar que existe y está activa
-  if (updateData.category && updateData.category !== book.category.toString()) {
-    const category = await Category.findById(updateData.category);
-    if (!category) {
-      throw createError('La categoría especificada no existe', 400);
+    let book = await Book.findById(id);
+    if (!book) {
+      return res.status(404).json({
+        success: false,
+        message: 'Libro no encontrado'
+      });
     }
-    if (!category.isActive) {
-      throw createError('La categoría especificada no está activa', 400);
-    }
-  }
 
-  // Si se está actualizando el ISBN, verificar que no exista otro libro con el mismo
-  if (updateData.isbn && updateData.isbn !== book.isbn) {
-    const existingBook = await Book.findOne({ 
-      isbn: updateData.isbn,
-      _id: { $ne: id } // Excluir el libro actual
+    if (updateData.category && updateData.category !== book.category.toString()) {
+      const category = await Category.findById(updateData.category);
+      if (!category) {
+        return res.status(400).json({
+          success: false,
+          message: 'La categoría especificada no existe'
+        });
+      }
+      if (!category.isActive) {
+        return res.status(400).json({
+          success: false,
+          message: 'La categoría especificada no está activa'
+        });
+      }
+    }
+
+    if (updateData.isbn && updateData.isbn !== book.isbn) {
+      const existingBook = await Book.findOne({ 
+        isbn: updateData.isbn,
+        _id: { $ne: id }
+      });
+      if (existingBook) {
+        return res.status(409).json({
+          success: false,
+          message: 'Ya existe un libro con este ISBN'
+        });
+      }
+    }
+
+    book = await Book.findByIdAndUpdate(
+      id,
+      updateData,
+      { 
+        new: true,
+        runValidators: true
+      }
+    ).populate('category', 'name description color');
+
+    res.status(200).json({
+      success: true,
+      message: 'Libro actualizado exitosamente',
+      data: book
     });
-    if (existingBook) {
-      throw createError('Ya existe un libro con este ISBN', 409);
+
+  } catch (error) {
+    console.error('Error en updateBook:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID proporcionado no es válido'
+      });
     }
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Error de validación',
+        errors: Object.values(error.errors).map(err => ({
+          field: err.path,
+          message: err.message
+        }))
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar libro'
+    });
   }
+};
 
-  // Actualizar el libro
-  book = await Book.findByIdAndUpdate(
-    id,
-    updateData,
-    { 
-      new: true, // Devolver el documento actualizado
-      runValidators: true // Ejecutar validadores del esquema
-    }
-  ).populate('category', 'name description color');
-
-  res.status(200).json({
-    success: true,
-    message: 'Libro actualizado exitosamente',
-    data: book
-  });
-});
 
 /**
  * @desc    Eliminar libro
@@ -277,27 +368,46 @@ const updateBook = asyncHandler(async (req, res) => {
  * @access  Privado (Admin)
  * Propósito: Elimina un libro de la base de datos
  */
-const deleteBook = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+const deleteBook = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  const book = await Book.findById(id);
-  if (!book) {
-    throw createError('Libro no encontrado', 404);
-  }
-
-  // Eliminar el libro
-  await Book.findByIdAndDelete(id);
-
-  res.status(200).json({
-    success: true,
-    message: 'Libro eliminado exitosamente',
-    data: { 
-      id,
-      title: book.title,
-      author: book.author
+    const book = await Book.findById(id);
+    if (!book) {
+      return res.status(404).json({
+        success: false,
+        message: 'Libro no encontrado'
+      });
     }
-  });
-});
+
+    await Book.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Libro eliminado exitosamente',
+      data: { 
+        id,
+        title: book.title,
+        author: book.author
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en deleteBook:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID proporcionado no es válido'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar libro'
+    });
+  }
+};
 
 /**
  * @desc    Obtener libros disponibles
@@ -305,7 +415,10 @@ const deleteBook = asyncHandler(async (req, res) => {
  * @access  Público
  * Propósito: Obtiene solo los libros que están disponibles para venta
  */
-const getAvailableBooks = asyncHandler(async (req, res) => {
+
+
+const getAvailableBooks = async (req, res) => {
+  try{
   const books = await Book.findAvailable();
 
   res.status(200).json({
@@ -314,7 +427,13 @@ const getAvailableBooks = asyncHandler(async (req, res) => {
     data: books,
     count: books.length
   });
-});
+  }catch(error){
+    console.error('Error en [getAvailableBooks]:', error);
+    res.status(500).json({
+    success: false,
+    message: 'Error interno del servidor'});
+  };
+}
 
 /**
  * @desc    Obtener libros por categoría
@@ -322,8 +441,10 @@ const getAvailableBooks = asyncHandler(async (req, res) => {
  * @access  Público
  * Propósito: Obtiene libros de una categoría específica
  */
-const getBooksByCategory = asyncHandler(async (req, res) => {
-  const { categoryId } = req.params;
+const getBooksByCategory = async (req, res) => {
+
+  try{
+    const { categoryId } = req.params;
 
   // Verificar que la categoría existe
   const category = await Category.findById(categoryId);
@@ -344,7 +465,13 @@ const getBooksByCategory = asyncHandler(async (req, res) => {
     },
     count: books.length
   });
-});
+  }catch{
+    console.error('Error en [getBooksByCategory]:', error);
+    res.status(500).json({
+    success: false,
+    message: 'Error interno del servidor'});
+  };
+}
 
 /**
  * @desc    Obtener libros destacados
@@ -352,8 +479,9 @@ const getBooksByCategory = asyncHandler(async (req, res) => {
  * @access  Público
  * Propósito: Obtiene libros marcados como destacados
  */
-const getFeaturedBooks = asyncHandler(async (req, res) => {
-  const books = await Book.find({ isFeatured: true })
+const getFeaturedBooks = async (req, res) => {
+  try{
+    const books = await Book.find({ isFeatured: true })
     .populate('category', 'name description color')
     .sort({ averageRating: -1, reviewCount: -1 })
     .limit(10);
@@ -364,7 +492,13 @@ const getFeaturedBooks = asyncHandler(async (req, res) => {
     data: books,
     count: books.length
   });
-});
+  }catch{
+    console.error('Error en [getFeaturedBooks]:', error);
+    res.status(500).json({
+    success: false,
+    message: 'Error interno del servidor'});
+  }
+};
 
 /**
  * @desc    Buscar libros por texto
@@ -372,8 +506,9 @@ const getFeaturedBooks = asyncHandler(async (req, res) => {
  * @access  Público
  * Propósito: Búsqueda avanzada de libros por texto
  */
-const searchBooks = asyncHandler(async (req, res) => {
-  const { searchTerm } = req.params;
+const searchBooks = async (req, res) => {
+  try{
+      const { searchTerm } = req.params;
   const { category, minPrice, maxPrice, language } = req.query;
 
   // Construir filtros
@@ -405,7 +540,14 @@ const searchBooks = asyncHandler(async (req, res) => {
     searchTerm,
     count: books.length
   });
-});
+  }catch{
+    console.error('Error en [searchBooks]:', error);
+    res.status(500).json({
+    success: false,
+    message: 'Error interno del servidor'});
+  };
+
+}
 
 /**
  * @desc    Actualizar stock de libro
@@ -413,7 +555,7 @@ const searchBooks = asyncHandler(async (req, res) => {
  * @access  Privado (Admin)
  * Propósito: Actualiza el stock de un libro específico
  */
-const updateBookStock = asyncHandler(async (req, res) => {
+const updateBookStock = async (req, res) => {
   const { id } = req.params;
   const { quantity, operation } = req.body; // operation: 'add' | 'reduce' | 'set'
 
@@ -455,7 +597,7 @@ const updateBookStock = asyncHandler(async (req, res) => {
   } catch (error) {
     throw createError(error.message, 400);
   }
-});
+};
 
 /**
  * @desc    Obtener estadísticas de libros
@@ -463,7 +605,7 @@ const updateBookStock = asyncHandler(async (req, res) => {
  * @access  Privado (Admin)
  * Propósito: Obtiene estadísticas generales de los libros
  */
-const getBookStats = asyncHandler(async (req, res) => {
+const getBookStats = (async (req, res) => {
   const [
     totalBooks,
     availableBooks,

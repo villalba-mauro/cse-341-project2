@@ -1,98 +1,115 @@
 const Category = require('../models/category');
-const {asyncHandler, createError } = require('../middleware/errorHandler');
+const { createError } = require('../middleware/errorHandler');
 
 /**
  * @desc    Obtener todas las categorías
  * @route   GET /api/categories
  * @access  Público
- * Propósito: Lista todas las categorías con opciones de filtradono y paginación
  */
-const getCategories = asyncHandler(async (req, res) => {
-  // Extraer parámetros de consulta (ya validados por middleware)
-  const { page = 1, limit = 10, search, isActive } = req.query;
-  
-  // Construir filtros de búsqueda
-  const filters = {};
-  
-  // Filtro por estado activo/inactivo
-  if (isActive !== undefined) {
-    filters.isActive = isActive === 'true';
-  }
-  
-  // Filtro de búsqueda por nombre o descripción
-  if (search) {
-    filters.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } }
-    ];
-  }
-
-  // Configurar paginación
-  const skip = (page - 1) * limit;
-  
-  // Ejecutar consulta con paginación
-  const [categories, total] = await Promise.all([
-    Category.find(filters)
-      .populate('bookCount') // Incluir conteo virtual de libros
-      .sort({ name: 1 }) // Ordenar alfabéticamente
-      .skip(skip)
-      .limit(parseInt(limit)),
-    Category.countDocuments(filters)
-  ]);
-
-  // Calcular información de paginación
-  const totalPages = Math.ceil(total / limit);
-  const hasNextPage = page < totalPages;
-  const hasPrevPage = page > 1;
-
-  res.status(200).json({
-    success: true,
-    message: 'Categorías obtenidas exitosamente',
-    data: categories,
-    pagination: {
-      currentPage: parseInt(page),
-      totalPages,
-      totalItems: total,
-      itemsPerPage: parseInt(limit),
-      hasNextPage,
-      hasPrevPage
+const getCategories = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search, isActive } = req.query;
+    
+    const filters = {};
+    
+    if (isActive !== undefined) {
+      filters.isActive = isActive === 'true';
     }
-  });
-});
+    
+    if (search) {
+      filters.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+    
+    const [categories, total] = await Promise.all([
+      Category.find(filters)
+        .populate('bookCount')
+        .sort({ name: 1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Category.countDocuments(filters)
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.status(200).json({
+      success: true,
+      message: 'Categorías obtenidas exitosamente',
+      data: categories,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalItems: total,
+        itemsPerPage: parseInt(limit),
+        hasNextPage,
+        hasPrevPage
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en getCategories:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener categorías'
+    });
+  }
+};
 
 /**
  * @desc    Obtener una categoría por ID
  * @route   GET /api/categories/:id
  * @access  Público
- * Propósito: Obtiene una categoría específica con información detallada
  */
-const getCategoryById = asyncHandler(async (req, res) => {
-  const category = await Category.findById(req.params.id)
-    .populate('bookCount');
+const getCategoryById = async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.id)
+      .populate('bookCount');
 
-  if (!category) {
-    throw createError('Categoría no encontrada', 404);
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Categoría no encontrada'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Categoría obtenida exitosamente',
+      data: category
+    });
+
+  } catch (error) {
+    console.error('Error en getCategoryById:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de categoría no válido'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener categoría'
+    });
   }
-
-  res.status(200).json({
-    success: true,
-    message: 'Categoría obtenida exitosamente',
-    data: category
-  });
-});
+};
 
 /**
  * @desc    Crear nueva categoría
  * @route   POST /api/categories
- * @access  Privado (Admin)
- * Propósito: Crea una nueva categoría en la base de datos
+ * @access  Público
  */
 const createCategory = async (req, res) => {
   try {
-    // Los datos ya están validados por el middleware de validación
     const categoryData = req.body;
 
-    // Verificar si ya existe una categoría con el mismo nombre
     const existingCategory = await Category.findOne({
       name: { $regex: `^${categoryData.name}$`, $options: 'i' }
     });
@@ -104,10 +121,8 @@ const createCategory = async (req, res) => {
       });
     }
 
-    // Crear la nueva categoría
     const category = await Category.create(categoryData);
 
-    // Obtener la categoría creada con todos los campos poblados
     const createdCategory = await Category.findById(category._id)
       .populate('bookCount');
 
@@ -118,10 +133,8 @@ const createCategory = async (req, res) => {
     });
 
   } catch (error) {
-    // ✅ TRY/CATCH EXPLÍCITO para cumplir rúbrica
     console.error('Error en createCategory:', error);
     
-    // Manejar errores específicos de validación
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
@@ -133,7 +146,6 @@ const createCategory = async (req, res) => {
       });
     }
 
-    // Manejar error de nombre duplicado
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
@@ -141,7 +153,6 @@ const createCategory = async (req, res) => {
       });
     }
 
-    // Error genérico del servidor
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor al crear categoría'
@@ -152,199 +163,278 @@ const createCategory = async (req, res) => {
 /**
  * @desc    Actualizar categoría
  * @route   PUT /api/categories/:id
- * @access  Privado (Admin)
- * Propósito: Actualiza una categoría existente
+ * @access  Público
  */
-const updateCategory = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const updateData = req.body;
+const updateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
 
-  // Verificar si la categoría existe
-  let category = await Category.findById(id);
-  if (!category) {
-    throw createError('Categoría no encontrada', 404);
-  }
+    let category = await Category.findById(id);
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Categoría no encontrada'
+      });
+    }
 
-  // Si se está actualizando el nombre, verificar que no exista otro con el mismo nombre
-  if (updateData.name && updateData.name !== category.name) {
-    const existingCategory = await Category.findOne({ 
-      name: { $regex: `^${updateData.name}$`, $options: 'i' },
-      _id: { $ne: id } // Excluir la categoría actual
+    if (updateData.name && updateData.name !== category.name) {
+      const existingCategory = await Category.findOne({
+        name: { $regex: `^${updateData.name}$`, $options: 'i' },
+        _id: { $ne: id }
+      });
+
+      if (existingCategory) {
+        return res.status(409).json({
+          success: false,
+          message: 'Ya existe una categoría con ese nombre'
+        });
+      }
+    }
+
+    category = await Category.findByIdAndUpdate(
+      id,
+      updateData,
+      { 
+        new: true,
+        runValidators: true
+      }
+    ).populate('bookCount');
+
+    res.status(200).json({
+      success: true,
+      message: 'Categoría actualizada exitosamente',
+      data: category
     });
 
-    if (existingCategory) {
-      throw createError('Ya existe una categoría con ese nombre', 409);
+  } catch (error) {
+    console.error('Error en updateCategory:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de categoría no válido'
+      });
     }
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Error de validación',
+        errors: Object.values(error.errors).map(err => ({
+          field: err.path,
+          message: err.message
+        }))
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar categoría'
+    });
   }
-
-  // Actualizar la categoría
-  category = await Category.findByIdAndUpdate(
-    id,
-    updateData,
-    { 
-      new: true, // Devolver el documento actualizado
-      runValidators: true // Ejecutar validadores del esquema
-    }
-  ).populate('bookCount');
-
-  res.status(200).json({
-    success: true,
-    message: 'Categoría actualizada exitosamente',
-    data: category
-  });
-});
+};
 
 /**
  * @desc    Eliminar categoría
  * @route   DELETE /api/categories/:id
- * @access  Privado (Admin)
- * Propósito: Elimina una categoría (soft delete o hard delete según tenga libros)
+ * @access  Público
  */
-const deleteCategory = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+const deleteCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  const category = await Category.findById(id);
-  if (!category) {
-    throw createError('Categoría no encontrada', 404);
-  }
+    const category = await Category.findById(id);
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Categoría no encontrada'
+      });
+    }
 
-  // Verificar si la categoría tiene libros asociados
-  const Book = require('../models/book');
-  const booksCount = await Book.countDocuments({ category: id });
+    const Book = require('../models/book');
+    const booksCount = await Book.countDocuments({ category: id });
 
-  if (booksCount > 0) {
-    // Si tiene libros, hacer soft delete (marcar como inactiva)
-    category.isActive = false;
-    await category.save();
+    if (booksCount > 0) {
+      category.isActive = false;
+      await category.save();
+      
+      res.status(200).json({
+        success: true,
+        message: `Categoría desactivada (tiene ${booksCount} libros asociados)`,
+        data: { 
+          id: category._id,
+          name: category.name,
+          isActive: category.isActive,
+          booksCount 
+        }
+      });
+    } else {
+      await Category.findByIdAndDelete(id);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Categoría eliminada exitosamente',
+        data: { id }
+      });
+    }
+
+  } catch (error) {
+    console.error('Error en deleteCategory:', error);
     
-    res.status(200).json({
-      success: true,
-      message: `Categoría desactivada (tiene ${booksCount} libros asociados)`,
-      data: { 
-        id: category._id,
-        name: category.name,
-        isActive: category.isActive,
-        booksCount 
-      }
-    });
-  } else {
-    // Si no tiene libros, eliminar completamente
-    await Category.findByIdAndDelete(id);
-    
-    res.status(200).json({
-      success: true,
-      message: 'Categoría eliminada exitosamente',
-      data: { id }
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de categoría no válido'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar categoría'
     });
   }
-});
+};
 
 /**
  * @desc    Obtener categorías activas
  * @route   GET /api/categories/active
  * @access  Público
- * Propósito: Obtiene solo las categorías activas (método estático del modelo)
  */
-const getActiveCategories = asyncHandler(async (req, res) => {
-  const categories = await Category.findActive();
+const getActiveCategories = async (req, res) => {
+  try {
+    const categories = await Category.findActive();
 
-  res.status(200).json({
-    success: true,
-    message: 'Categorías activas obtenidas exitosamente',
-    data: categories,
-    count: categories.length
-  });
-});
+    res.status(200).json({
+      success: true,
+      message: 'Categorías activas obtenidas exitosamente',
+      data: categories,
+      count: categories.length
+    });
+
+  } catch (error) {
+    console.error('Error en getActiveCategories:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener categorías activas'
+    });
+  }
+};
 
 /**
  * @desc    Activar/Desactivar categoría
  * @route   PATCH /api/categories/:id/toggle-status
- * @access  Privado (Admin)
- * Propósito: Cambia el estado activo/inactivo de una categoría
+ * @access  Público
  */
-const toggleCategoryStatus = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+const toggleCategoryStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  const category = await Category.findById(id);
-  if (!category) {
-    throw createError('Categoría no encontrada', 404);
-  }
-
-  // Cambiar el estado
-  category.isActive = !category.isActive;
-  await category.save();
-
-  res.status(200).json({
-    success: true,
-    message: `Categoría ${category.isActive ? 'activada' : 'desactivada'} exitosamente`,
-    data: {
-      id: category._id,
-      name: category.name,
-      isActive: category.isActive
+    const category = await Category.findById(id);
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Categoría no encontrada'
+      });
     }
-  });
-});
+
+    category.isActive = !category.isActive;
+    await category.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Categoría ${category.isActive ? 'activada' : 'desactivada'} exitosamente`,
+      data: {
+        id: category._id,
+        name: category.name,
+        isActive: category.isActive
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en toggleCategoryStatus:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de categoría no válido'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Error al cambiar estado de categoría'
+    });
+  }
+};
 
 /**
  * @desc    Obtener estadísticas de categorías
  * @route   GET /api/categories/stats
- * @access  Privado (Admin)
- * Propósito: Obtiene estadísticas generales de las categorías
+ * @access  Público
  */
-const getCategoryStats = asyncHandler(async (req, res) => {
-  const [
-    totalCategories,
-    activeCategories,
-    inactiveCategories
-  ] = await Promise.all([
-    Category.countDocuments({}),
-    Category.countDocuments({ isActive: true }),
-    Category.countDocuments({ isActive: false })
-  ]);
+const getCategoryStats = async (req, res) => {
+  try {
+    const [
+      totalCategories,
+      activeCategories,
+      inactiveCategories
+    ] = await Promise.all([
+      Category.countDocuments({}),
+      Category.countDocuments({ isActive: true }),
+      Category.countDocuments({ isActive: false })
+    ]);
 
-  // Obtener categorías con más libros (agregación)
-  const categoriesWithBookCount = await Category.aggregate([
-    {
-      $lookup: {
-        from: 'books',
-        localField: '_id',
-        foreignField: 'category',
-        as: 'books'
-      }
-    },
-    {
-      $addFields: {
-        bookCount: { $size: '$books' }
-      }
-    },
-    {
-      $sort: { bookCount: -1 }
-    },
-    {
-      $limit: 5
-    },
-    {
-      $project: {
-        name: 1,
-        bookCount: 1,
-        isActive: 1
-      }
-    }
-  ]);
-
-  res.status(200).json({
-    success: true,
-    message: 'Estadísticas de categorías obtenidas exitosamente',
-    data: {
-      totals: {
-        total: totalCategories,
-        active: activeCategories,
-        inactive: inactiveCategories
+    const categoriesWithBookCount = await Category.aggregate([
+      {
+        $lookup: {
+          from: 'books',
+          localField: '_id',
+          foreignField: 'category',
+          as: 'books'
+        }
       },
-      topCategories: categoriesWithBookCount
-    }
-  });
-});
+      {
+        $addFields: {
+          bookCount: { $size: '$books' }
+        }
+      },
+      {
+        $sort: { bookCount: -1 }
+      },
+      {
+        $limit: 5
+      },
+      {
+        $project: {
+          name: 1,
+          bookCount: 1,
+          isActive: 1
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Estadísticas de categorías obtenidas exitosamente',
+      data: {
+        totals: {
+          total: totalCategories,
+          active: activeCategories,
+          inactive: inactiveCategories
+        },
+        topCategories: categoriesWithBookCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en getCategoryStats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener estadísticas de categorías'
+    });
+  }
+};
 
 module.exports = {
   getCategories,

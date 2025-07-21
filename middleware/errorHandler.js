@@ -47,7 +47,7 @@ const handleMongoError = (error) => {
     statusCode = 400;
     return {
       statusCode,
-      message: 'The provided ID is not valido',
+      message: 'The provided ID is not valid',
       field: error.path,
       value: error.value
     };
