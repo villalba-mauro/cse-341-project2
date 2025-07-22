@@ -131,7 +131,7 @@ router.get('/stats', getCategoryStats);
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Categorías obtenidas exitosamente"
+ *                   example: "Category successfully obtained"
  *                 data:
  *                   type: array
  *                   items:
@@ -213,7 +213,7 @@ router.get('/',
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Categoría creada exitosamente"
+ *                   example: "Category created successfully"
  *                 data:
  *                   $ref: '#/components/schemas/Category'
  *       400:
@@ -282,7 +282,7 @@ router.post('/',
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Categoría obtenida exitosamente"
+ *                   example: "Category successfully obtained"
  *                 data:
  *                   $ref: '#/components/schemas/Category'
  *       400:
@@ -377,7 +377,7 @@ router.get('/:id',
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Categoría actualizada exitosamente"
+ *                   example: "Category updated successfully"
  *                 data:
  *                   $ref: '#/components/schemas/Category'
  *       400:
@@ -411,7 +411,7 @@ router.get('/:id',
  *                   example: false
  *                 message:
  *                   type: string
- *                   example: "Ya existe una categoría con ese nombre"
+ *                   example: "There is already a category with that name"
  *       500:
  *         description: Server error
  */
@@ -451,7 +451,7 @@ router.put('/:id',
  *                       example: true
  *                     message:
  *                       type: string
- *                       example: "Categoría eliminada exitosamente"
+ *                       example: "Category successfully deleted"
  *                     data:
  *                       type: object
  *                       properties:
