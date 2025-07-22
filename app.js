@@ -14,6 +14,7 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
  */
 const categoryRoutes = require('./routes/categoryRoutes');
 const bookRoutes = require('./routes/bookRoutes');
+const { swaggerUi, specs } = require('./config/swagger');
 
 /**
  * Crear instancia de Express
@@ -91,6 +92,19 @@ app.get('/', (req, res) => {
 app.use('/api/categories', categoryRoutes);
 app.use('/api/books', bookRoutes);
 
+/**
+ * SWAGGER DOCUMENTATION
+ */
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Digital Library API Documentation'
+}));
+
+// Redirect /docs to /api-docs
+app.get('/docs', (req, res) => {
+  res.redirect('/api-docs');
+});
 /**
  * MIDDLEWARE DE MANEJO DE ERRORES
  */

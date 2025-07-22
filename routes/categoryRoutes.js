@@ -22,23 +22,65 @@ const {
 } = require('../middleware/validation');
 
 /**
+ * @swagger
+ * tags:
+ *   name: Categories
+ *   description: Category management endpoints
+ */
+
+/**
  * RUTAS ESPECIALES (deben ir antes que las rutas con parámetros)
  * Propósito: Estas rutas tienen paths específicos que podrían confundirse con IDs
  */
 
 /**
- * @route   GET /api/categories/active
- * @desc    Obtener solo categorías activas
- * @access  Público
- * Propósito: Endpoint específico para obtener categorías que están habilitadas
+ * @swagger
+ * /api/categories/active:
+ *   get:
+ *     summary: Get only active categories
+ *     tags: [Categories]
+ *     responses:
+ *       200:
+ *         description: List of active categories
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Category'
+ *                 count:
+ *                   type: integer
  */
 router.get('/active', getActiveCategories);
 
 /**
- * @route   GET /api/categories/stats
- * @desc    Obtener estadísticas de categorías
- * @access  Privado (Admin) - Por ahora público para testing
- * Propósito: Dashboard con métricas y estadísticas de las categorías
+ * @swagger
+ * /api/categories/stats:
+ *   get:
+ *     summary: Get category statistics
+ *     tags: [Categories]
+ *     responses:
+ *       200:
+ *         description: Category statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totals:
+ *                       type: object
+ *                     topCategories:
+ *                       type: array
  */
 router.get('/stats', getCategoryStats);
 
@@ -48,11 +90,73 @@ router.get('/stats', getCategoryStats);
  */
 
 /**
- * @route   GET /api/categories
- * @desc    Obtener todas las categorías con filtros y paginación
- * @access  Público
- * Propósito: Lista paginada de categorías con opciones de búsqueda
- * Query params: page, limit, search, isActive
+ * @swagger
+ * /api/categories:
+ *   get:
+ *     summary: Get all categories with filters and pagination
+ *     tags: [Categories]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term for name or description
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active status
+ *     responses:
+ *       200:
+ *         description: List of categories retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Categorías obtenidas exitosamente"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Category'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     totalItems:
+ *                       type: integer
+ *                     itemsPerPage:
+ *                       type: integer
+ *                     hasNextPage:
+ *                       type: boolean
+ *                     hasPrevPage:
+ *                       type: boolean
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/', 
   validateQueryParams(), // Valida parámetros de consulta
@@ -60,11 +164,85 @@ router.get('/',
 );
 
 /**
- * @route   POST /api/categories
- * @desc    Crear nueva categoría
- * @access  Privado (Admin) - Por ahora público para testing
- * Propósito: Crear una nueva categoría de libros
- * Body: { name, description, color?, isActive? }
+ * @swagger
+ * /api/categories:
+ *   post:
+ *     summary: Create a new category
+ *     tags: [Categories]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - description
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 50
+ *                 example: "Biography"
+ *                 description: "Category name (2-50 characters)"
+ *               description:
+ *                 type: string
+ *                 minLength: 10
+ *                 maxLength: 200
+ *                 example: "Biographical books and memoirs of famous personalities"
+ *                 description: "Category description (10-200 characters)"
+ *               color:
+ *                 type: string
+ *                 pattern: '^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'
+ *                 example: "#ff6b35"
+ *                 description: "Hexadecimal color code (optional)"
+ *               isActive:
+ *                 type: boolean
+ *                 example: true
+ *                 description: "Whether category is active (optional, defaults to true)"
+ *     responses:
+ *       201:
+ *         description: Category created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Categoría creada exitosamente"
+ *                 data:
+ *                   $ref: '#/components/schemas/Category'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               success: false
+ *               message: "Error de validación"
+ *               errors:
+ *                 - field: "name"
+ *                   message: "El nombre debe tener al menos 2 caracteres"
+ *       409:
+ *         description: Category already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Ya existe una categoría con ese nombre"
+ *       500:
+ *         description: Internal server error
  */
 router.post('/', 
   validate(categoryValidationSchema.create), // Valida datos de entrada
@@ -77,10 +255,64 @@ router.post('/',
  */
 
 /**
- * @route   GET /api/categories/:id
- * @desc    Obtener categoría por ID
- * @access  Público
- * Propósito: Obtiene información detallada de una categoría específica
+ * @swagger
+ * /api/categories/{id}:
+ *   get:
+ *     summary: Get category by ID
+ *     tags: [Categories]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^[0-9a-fA-F]{24}$'
+ *         description: MongoDB ObjectId of the category
+ *         example: "60b4f1e5b6d4a4001f4e4e4e"
+ *     responses:
+ *       200:
+ *         description: Category retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Categoría obtenida exitosamente"
+ *                 data:
+ *                   $ref: '#/components/schemas/Category'
+ *       400:
+ *         description: Invalid category ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "ID de categoría no válido"
+ *       404:
+ *         description: Category not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Categoría no encontrada"
+ *       500:
+ *         description: Server error
  */
 router.get('/:id', 
   validateObjectId('id'), // Valida que el ID sea un ObjectId válido
@@ -88,11 +320,100 @@ router.get('/:id',
 );
 
 /**
- * @route   PUT /api/categories/:id
- * @desc    Actualizar categoría completa
- * @access  Privado (Admin) - Por ahora público para testing
- * Propósito: Actualiza todos los campos de una categoría
- * Body: { name?, description?, color?, isActive? }
+ * @swagger
+ * /api/categories/{id}:
+ *   put:
+ *     summary: Update a category
+ *     tags: [Categories]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^[0-9a-fA-F]{24}$'
+ *         description: MongoDB ObjectId of the category
+ *         example: "60b4f1e5b6d4a4001f4e4e4e"
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 50
+ *                 example: "Updated Biography"
+ *                 description: "Updated category name"
+ *               description:
+ *                 type: string
+ *                 minLength: 10
+ *                 maxLength: 200
+ *                 example: "Updated description for biographical books, memoirs and autobiographies"
+ *                 description: "Updated category description"
+ *               color:
+ *                 type: string
+ *                 pattern: '^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'
+ *                 example: "#28a745"
+ *                 description: "Updated hexadecimal color code"
+ *               isActive:
+ *                 type: boolean
+ *                 example: true
+ *                 description: "Updated active status"
+ *           example:
+ *             description: "Updated description for biographical books, memoirs and autobiographies"
+ *             color: "#28a745"
+ *     responses:
+ *       200:
+ *         description: Category updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Categoría actualizada exitosamente"
+ *                 data:
+ *                   $ref: '#/components/schemas/Category'
+ *       400:
+ *         description: Invalid ID or validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Category not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Categoría no encontrada"
+ *       409:
+ *         description: Category name already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Ya existe una categoría con ese nombre"
+ *       500:
+ *         description: Server error
  */
 router.put('/:id', 
   validateObjectId('id'),
@@ -101,10 +422,89 @@ router.put('/:id',
 );
 
 /**
- * @route   DELETE /api/categories/:id
- * @desc    Eliminar categoría
- * @access  Privado (Admin) - Por ahora público para testing
- * Propósito: Elimina una categoría (soft delete si tiene libros asociados)
+ * @swagger
+ * /api/categories/{id}:
+ *   delete:
+ *     summary: Delete a category
+ *     tags: [Categories]
+ *     description: Deletes a category. If the category has associated books, it will be deactivated instead of deleted.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^[0-9a-fA-F]{24}$'
+ *         description: MongoDB ObjectId of the category
+ *         example: "60b4f1e5b6d4a4001f4e4e4e"
+ *     responses:
+ *       200:
+ *         description: Category deleted or deactivated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                       example: true
+ *                     message:
+ *                       type: string
+ *                       example: "Categoría eliminada exitosamente"
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                 - type: object
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                       example: true
+ *                     message:
+ *                       type: string
+ *                       example: "Categoría desactivada (tiene 5 libros asociados)"
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         isActive:
+ *                           type: boolean
+ *                           example: false
+ *                         booksCount:
+ *                           type: integer
+ *       400:
+ *         description: Invalid category ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "ID de categoría no válido"
+ *       404:
+ *         description: Category not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Categoría no encontrada"
+ *       500:
+ *         description: Server error
  */
 router.delete('/:id', 
   validateObjectId('id'),
@@ -117,10 +517,43 @@ router.delete('/:id',
  */
 
 /**
- * @route   PATCH /api/categories/:id/toggle-status
- * @desc    Activar/Desactivar categoría
- * @access  Privado (Admin) - Por ahora público para testing
- * Propósito: Cambia el estado activo/inactivo de una categoría
+ * @swagger
+ * /api/categories/{id}/toggle-status:
+ *   patch:
+ *     summary: Toggle category active status
+ *     tags: [Categories]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Category ID
+ *     responses:
+ *       200:
+ *         description: Category status toggled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     isActive:
+ *                       type: boolean
+ *       400:
+ *         description: Invalid ID
+ *       404:
+ *         description: Category not found
  */
 router.patch('/:id/toggle-status', 
   validateObjectId('id'),
