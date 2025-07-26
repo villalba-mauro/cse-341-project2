@@ -30,6 +30,9 @@ const startServer = async () => {
       console.log(`🏥 Health check: http://localhost:${PORT}/health`);
       console.log(`📚 API Categorías: http://localhost:${PORT}/api/categories`);
       console.log(`📖 API Libros: http://localhost:${PORT}/api/books`);
+      console.log(`🔐 Autenticación: http://localhost:${PORT}/auth/google`);
+      console.log(`👤 Estado de sesión: http://localhost:${PORT}/auth/status`);
+      console.log(`📖 Documentación API: http://localhost:${PORT}/api-docs`);
       console.log(`📝 Modo: ${process.env.NODE_ENV || 'development'}`);
       console.log('────────────────────────────────────────');
     });
@@ -116,8 +119,16 @@ process.on('uncaughtException', (err) => {
 /**
  * Función para verificar variables de entorno críticas
  */
+/**
+ * Función para verificar variables de entorno críticas
+ */
 const checkEnvironmentVariables = () => {
-  const requiredEnvVars = ['MONGODB_URI'];
+  const requiredEnvVars = [
+    'MONGODB_URI', 
+    'SESSION_SECRET', 
+    'GOOGLE_CLIENT_ID', 
+    'GOOGLE_CLIENT_SECRET'
+  ];
   const missingVars = [];
   
   requiredEnvVars.forEach(varName => {
@@ -132,6 +143,7 @@ const checkEnvironmentVariables = () => {
       console.error(`   - ${varName}`);
     });
     console.error('💡 Make sure you create a .env file with all the necessary variables');
+    console.error('💡 Para OAuth, necesitas configurar Google Cloud Console');
     process.exit(1);
   }
   

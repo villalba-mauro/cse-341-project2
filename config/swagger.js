@@ -7,7 +7,7 @@ const options = {
     info: {
       title: 'Digital Library API',
       version: '1.0.0',
-      description: 'Complete CRUD API for managing books and categories in a digital library',
+      description: 'Complete CRUD API for managing books and categories in a digital library with OAuth authentication',
       contact: {
         name: 'API Support',
         email: 'support@library.com'
@@ -24,7 +24,97 @@ const options = {
       }
     ],
     components: {
+      securitySchemes: {
+        GoogleOAuth: {
+          type: 'oauth2',
+          description: `
+# 🔐 Autenticación OAuth con Google
+
+**Instrucciones para autenticarte:**
+
+1. **Click en "Authorize"** (no necesitas llenar los campos)
+2. **Serás redirigido a Google** para hacer login
+3. **Acepta los permisos** solicitados
+4. **Regresarás automáticamente** a Swagger autenticado
+
+**Nota:** Los credentials OAuth están configurados en el servidor, no necesitas introducir client_id ni client_secret.
+
+**Rutas protegidas:** Solo administradores pueden acceder a operaciones POST, PUT, DELETE y estadísticas.
+          `,
+          flows: {
+            authorizationCode: {
+              authorizationUrl: '/auth/google',
+              tokenUrl: '/auth/google/callback',
+              scopes: {
+                profile: 'Access to user profile information',
+                email: 'Access to user email address'
+              }
+            }
+          }
+        },
+        SessionAuth: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'connect.sid',
+          description: 'Session-based authentication. After OAuth login, your session is stored in cookies.'
+        }
+      },
       schemas: {
+        User: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'MongoDB ObjectId'
+            },
+            name: {
+              type: 'string',
+              example: 'Juan Pérez',
+              description: 'User full name'
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              example: 'juan@example.com',
+              description: 'User email address'
+            },
+            avatar: {
+              type: 'string',
+              format: 'uri',
+              description: 'User profile picture URL'
+            },
+            role: {
+              type: 'string',
+              enum: ['user', 'admin'],
+              example: 'user',
+              description: 'User role in the system'
+            },
+            provider: {
+              type: 'string',
+              enum: ['local', 'google'],
+              example: 'google',
+              description: 'Authentication provider'
+            },
+            lastLogin: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last login timestamp'
+            },
+            emailVerified: {
+              type: 'boolean',
+              example: true,
+              description: 'Whether email is verified'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time'
+            }
+          }
+        },
         Category: {
           type: 'object',
           required: ['name', 'description'],
@@ -196,7 +286,12 @@ const options = {
           }
         }
       }
-    }
+    },
+    security: [
+      {
+        GoogleOAuth: []
+      }
+    ]
   },
   apis: ['./routes/*.js'], // Paths to files containing OpenAPI definitions
 };

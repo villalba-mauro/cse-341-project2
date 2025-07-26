@@ -2,7 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
+const passport = require('passport');
 require('dotenv').config();
+
+
+/**
+ * Importar configuración de autenticación
+ */
+require('./config/passport');
+
 
 /**
  * Importar middleware personalizado
@@ -14,6 +23,7 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
  */
 const categoryRoutes = require('./routes/categoryRoutes');
 const bookRoutes = require('./routes/bookRoutes');
+const authRoutes = require('./routes/authRoutes');
 const { swaggerUi, specs } = require('./config/swagger');
 
 /**
@@ -42,6 +52,27 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
+
+/**
+ * CONFIGURACIÓN DE SESIONES
+ * Propósito: Habilita el manejo de sesiones para autenticación
+ */
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+    maxAge: 24 * 60 * 60 * 1000 // 24 horas
+  }
+}));
+
+/**
+ * CONFIGURACIÓN DE PASSPORT
+ * Propósito: Inicializa Passport para autenticación OAuth
+ */
+app.use(passport.initialize());
+app.use(passport.session());
 
 /**
  * MIDDLEWARE DE PARSING
@@ -83,7 +114,11 @@ app.get('/', (req, res) => {
     endpoints: {
       categories: '/api/categories',
       books: '/api/books',
-      health: '/health'
+      authentication: '/auth/google',
+      profile: '/auth/profile',
+      status: '/auth/status',
+      health: '/health',
+      documentation: '/api-docs'
     }
   });
 });
@@ -91,6 +126,7 @@ app.get('/', (req, res) => {
 // Rutas de la API
 app.use('/api/categories', categoryRoutes);
 app.use('/api/books', bookRoutes);
+app.use('/auth', authRoutes)
 
 /**
  * SWAGGER DOCUMENTATION

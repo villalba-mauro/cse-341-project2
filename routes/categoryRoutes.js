@@ -21,6 +21,9 @@ const {
   validateQueryParams
 } = require('../middleware/validation');
 
+// Importar middleware de autenticación
+const { ensureAuthenticated, ensureAdmin, optionalAuth } = require('../config/passport');
+
 /**
  * @swagger
  * tags:
@@ -65,6 +68,8 @@ router.get('/active', getActiveCategories);
  *     summary: Get category statistics
  *     tags: [Categories]
  *     responses:
+ *     security:
+ *     - GoogleOAuth: []
  *       200:
  *         description: Category statistics
  *         content:
@@ -81,9 +86,12 @@ router.get('/active', getActiveCategories);
  *                       type: object
  *                     topCategories:
  *                       type: array
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin access required
  */
-router.get('/stats', getCategoryStats);
-
+router.get('/stats', ensureAdmin, getCategoryStats);
 /**
  * RUTAS PRINCIPALES CRUD
  * Propósito: Operaciones básicas Create, Read, Update, Delete

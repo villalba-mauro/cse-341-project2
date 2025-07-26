@@ -24,6 +24,9 @@ const {
   validateQueryParams
 } = require('../middleware/validation');
 
+// Importar middleware de autenticación
+const { ensureAuthenticated, ensureAdmin, optionalAuth } = require('../config/passport');
+
 const Joi = require('joi');
 
 /**
@@ -105,6 +108,8 @@ router.get('/featured', getFeaturedBooks);
  *     tags: [Books]
  *     description: Dashboard with financial metrics and inventory statistics
  *     responses:
+ *     security:
+ *       - GoogleOAuth: []
  *       200:
  *         description: Book statistics
  *         content:
@@ -125,8 +130,12 @@ router.get('/featured', getFeaturedBooks);
  *                       type: array
  *                     categoryDistribution:
  *                       type: array
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin access required
  */
-router.get('/stats', getBookStats);
+router.get('/stats', ensureAdmin, getBookStats);
 
 /**
  * RUTAS DE BÚSQUEDA
