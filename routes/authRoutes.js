@@ -2,7 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const router = express.Router();
 const User = require('../models/user');
-const { ensureAuthenticated } = require('../config/passport');
+const { ensureAuthenticated, getBaseURL } = require('../config/passport');
 
 /**
  * @swagger
@@ -86,11 +86,17 @@ const { ensureAuthenticated } = require('../config/passport');
  *               type: string
  *               example: "https://accounts.google.com/oauth/authorize?..."
  */
-router.get('/google', 
+router.get('/google', (req, res, next) => {
+  // Log para debugging
+  console.log('🔐 Iniciando autenticación con Google');
+  console.log('🌐 Base URL:', getBaseURL());
+  console.log('📧 Callback URL:', `${getBaseURL()}/auth/google/callback`);
+  
+  // Llamar a Passport para iniciar OAuth
   passport.authenticate('google', { 
     scope: ['profile', 'email'] 
-  })
-);
+  })(req, res, next);
+});
 
 /**
  * @swagger
@@ -325,7 +331,9 @@ router.get('/status', (req, res) => {
     success: true,
     isAuthenticated: req.isAuthenticated(),
     user: req.isAuthenticated() ? req.user.publicProfile : null,
-    loginUrl: '/auth/google'
+    loginUrl: '/auth/google',
+    environment: process.env.NODE_ENV || 'development',
+    baseUrl: getBaseURL()
   });
 });
 
@@ -356,7 +364,12 @@ router.get('/login/failure', (req, res) => {
     success: false,
     message: 'Error en la autenticación con Google',
     error: 'Authentication failed',
-    loginUrl: '/auth/google'
+    loginUrl: '/auth/google',
+    troubleshooting: {
+      checkGoogleConsole: 'Verifica la configuración en Google Cloud Console',
+      checkEnvironmentVars: 'Verifica GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET',
+      checkCallbackUrl: `Callback configurado: ${getBaseURL()}/auth/google/callback`
+    }
   });
 });
 

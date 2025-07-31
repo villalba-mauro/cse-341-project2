@@ -5,7 +5,19 @@ const User = require('../models/user');
 /**
  * Configuración de Passport para autenticación OAuth con Google
  * Propósito: Maneja la autenticación con Google OAuth 2.0
+*/
+/**
+ * Función para obtener la URL base según el entorno
+ * Propósito: Determina la URL correcta para producción o desarrollo
  */
+const getBaseURL = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // URL de tu aplicación en Render
+    return process.env.BASE_URL || 'https://cse-341-project2-jjv7.onrender.com';
+  }
+  // URL local para desarrollo
+  return `http://localhost:${process.env.PORT || 3000}`;
+};
 
 /**
  * Serialización del usuario para la sesión
@@ -18,7 +30,7 @@ passport.serializeUser((user, done) => {
 /**
  * Deserialización del usuario desde la sesión
  * Propósito: Recupera el usuario completo usando el ID almacenado en la sesión
- */
+*/
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findById(id);
@@ -31,7 +43,7 @@ passport.deserializeUser(async (id, done) => {
 /**
  * Estrategia de Google OAuth 2.0
  * Propósito: Configura la autenticación con Google
- */
+*/
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -85,7 +97,7 @@ passport.use(new GoogleStrategy({
 /**
  * Middleware para verificar autenticación
  * Propósito: Verifica si el usuario está autenticado
- */
+*/
 const ensureAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
@@ -101,7 +113,7 @@ const ensureAuthenticated = (req, res, next) => {
 /**
  * Middleware para verificar rol de administrador
  * Propósito: Verifica si el usuario tiene permisos de administrador
- */
+*/
 const ensureAdmin = (req, res, next) => {
   if (req.isAuthenticated() && req.user.role === 'admin') {
     return next();
@@ -117,7 +129,7 @@ const ensureAdmin = (req, res, next) => {
 /**
  * Middleware opcional para obtener usuario si está autenticado
  * Propósito: Agrega información del usuario sin requerir autenticación
- */
+*/
 const optionalAuth = (req, res, next) => {
   // Simplemente continúa sin requerir autenticación
   next();
@@ -126,7 +138,7 @@ const optionalAuth = (req, res, next) => {
 /**
  * Función para verificar si el usuario es propietario del recurso
  * Propósito: Verifica si el usuario puede modificar un recurso específico
- */
+*/
 const ensureOwnershipOrAdmin = (req, res, next) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({
@@ -152,5 +164,6 @@ module.exports = {
   ensureAuthenticated,
   ensureAdmin,
   optionalAuth,
-  ensureOwnershipOrAdmin
+  ensureOwnershipOrAdmin,
+  getBaseURL
 };
