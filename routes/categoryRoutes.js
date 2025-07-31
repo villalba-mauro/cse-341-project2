@@ -67,9 +67,9 @@ router.get('/active', getActiveCategories);
  *   get:
  *     summary: Get category statistics
  *     tags: [Categories]
- *     responses:
  *     security:
- *     - GoogleOAuth: []
+ *       - GoogleOAuth: []
+ *     responses:
  *       200:
  *         description: Category statistics
  *         content:
@@ -92,6 +92,7 @@ router.get('/active', getActiveCategories);
  *         description: Admin access required
  */
 router.get('/stats', ensureAdmin, getCategoryStats);
+
 /**
  * RUTAS PRINCIPALES CRUD
  * Propósito: Operaciones básicas Create, Read, Update, Delete
@@ -139,7 +140,7 @@ router.get('/stats', ensureAdmin, getCategoryStats);
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Category successfully obtained"
+ *                   example: "Categorías obtenidas exitosamente"
  *                 data:
  *                   type: array
  *                   items:
@@ -161,10 +162,6 @@ router.get('/stats', ensureAdmin, getCategoryStats);
  *                       type: boolean
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 router.get('/', 
   validateQueryParams(), // Valida parámetros de consulta
@@ -177,6 +174,8 @@ router.get('/',
  *   post:
  *     summary: Create a new category
  *     tags: [Categories]
+ *     security:
+ *       - GoogleOAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -221,38 +220,22 @@ router.get('/',
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Category created successfully"
+ *                   example: "Categoría creada exitosamente"
  *                 data:
  *                   $ref: '#/components/schemas/Category'
  *       400:
  *         description: Validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               success: false
- *               message: "Error de validación"
- *               errors:
- *                 - field: "name"
- *                   message: "El nombre debe tener al menos 2 caracteres"
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin access required
  *       409:
  *         description: Category already exists
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "Ya existe una categoría con ese nombre"
  *       500:
  *         description: Internal server error
  */
 router.post('/', 
+  ensureAdmin, // Requiere autenticación de admin
   validate(categoryValidationSchema.create), // Valida datos de entrada
   createCategory
 );
@@ -290,35 +273,13 @@ router.post('/',
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Category successfully obtained"
+ *                   example: "Categoría obtenida exitosamente"
  *                 data:
  *                   $ref: '#/components/schemas/Category'
  *       400:
  *         description: Invalid category ID
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "ID de categoría no válido"
  *       404:
  *         description: Category not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "Categoría no encontrada"
  *       500:
  *         description: Server error
  */
@@ -333,6 +294,8 @@ router.get('/:id',
  *   put:
  *     summary: Update a category
  *     tags: [Categories]
+ *     security:
+ *       - GoogleOAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -375,55 +338,21 @@ router.get('/:id',
  *     responses:
  *       200:
  *         description: Category updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Category updated successfully"
- *                 data:
- *                   $ref: '#/components/schemas/Category'
  *       400:
  *         description: Invalid ID or validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin access required
  *       404:
  *         description: Category not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "Categoría no encontrada"
  *       409:
  *         description: Category name already exists
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "There is already a category with that name"
  *       500:
  *         description: Server error
  */
 router.put('/:id', 
+  ensureAdmin, // Requiere autenticación de admin
   validateObjectId('id'),
   validate(categoryValidationSchema.update),
   updateCategory
@@ -436,6 +365,8 @@ router.put('/:id',
  *     summary: Delete a category
  *     tags: [Categories]
  *     description: Deletes a category. If the category has associated books, it will be deactivated instead of deleted.
+ *     security:
+ *       - GoogleOAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -448,81 +379,22 @@ router.put('/:id',
  *     responses:
  *       200:
  *         description: Category deleted or deactivated successfully
- *         content:
- *           application/json:
- *             schema:
- *               oneOf:
- *                 - type: object
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: true
- *                     message:
- *                       type: string
- *                       example: "Category successfully deleted"
- *                     data:
- *                       type: object
- *                       properties:
- *                         id:
- *                           type: string
- *                 - type: object
- *                   properties:
- *                     success:
- *                       type: boolean
- *                       example: true
- *                     message:
- *                       type: string
- *                       example: "Categoría desactivada (tiene 5 libros asociados)"
- *                     data:
- *                       type: object
- *                       properties:
- *                         id:
- *                           type: string
- *                         name:
- *                           type: string
- *                         isActive:
- *                           type: boolean
- *                           example: false
- *                         booksCount:
- *                           type: integer
  *       400:
  *         description: Invalid category ID
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "ID de categoría no válido"
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin access required
  *       404:
  *         description: Category not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "Categoría no encontrada"
  *       500:
  *         description: Server error
  */
 router.delete('/:id', 
+  ensureAdmin, // Requiere autenticación de admin
   validateObjectId('id'),
   deleteCategory
 );
-
-/**
- * RUTAS ESPECIALES CON ID
- * Propósito: Operaciones específicas sobre categorías individuales
- */
 
 /**
  * @swagger
@@ -530,6 +402,8 @@ router.delete('/:id',
  *   patch:
  *     summary: Toggle category active status
  *     tags: [Categories]
+ *     security:
+ *       - GoogleOAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -540,46 +414,19 @@ router.delete('/:id',
  *     responses:
  *       200:
  *         description: Category status toggled successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     name:
- *                       type: string
- *                     isActive:
- *                       type: boolean
  *       400:
  *         description: Invalid ID
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin access required
  *       404:
  *         description: Category not found
  */
 router.patch('/:id/toggle-status', 
+  ensureAdmin, // Requiere autenticación de admin
   validateObjectId('id'),
   toggleCategoryStatus
 );
-
-/**
- * MIDDLEWARE DE MANEJO DE ERRORES ESPECÍFICO PARA CATEGORÍAS
- * Propósito: Captura errores específicos de las rutas de categorías
- */
-router.use((error, req, res, next) => {
-  // Log específico para errores de categorías
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Error en rutas de categorías:', error.message);
-  }
-  
-  // Pasar el error al middleware global de manejo de errores
-  next(error);
-});
 
 module.exports = router;

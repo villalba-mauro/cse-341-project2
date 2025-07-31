@@ -107,9 +107,9 @@ router.get('/featured', getFeaturedBooks);
  *     summary: Get book statistics
  *     tags: [Books]
  *     description: Dashboard with financial metrics and inventory statistics
- *     responses:
  *     security:
  *       - GoogleOAuth: []
+ *     responses:
  *       200:
  *         description: Book statistics
  *         content:
@@ -381,6 +381,8 @@ router.get('/',
  *     summary: Create a new book
  *     tags: [Books]
  *     description: Creates a new book in the inventory with 16+ fields
+ *     security:
+ *       - GoogleOAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -514,37 +516,17 @@ router.get('/',
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *             examples:
- *               validation_error:
- *                 summary: Validation error
- *                 value:
- *                   success: false
- *                   message: "Error de validación"
- *                   errors:
- *                     - field: "isbn"
- *                       message: "El ISBN debe tener formato válido"
- *               invalid_category:
- *                 summary: Invalid category
- *                 value:
- *                   success: false
- *                   message: "La categoría especificada no existe"
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin access required
  *       409:
  *         description: ISBN already exists
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "Ya existe un libro con este ISBN"
  *       500:
  *         description: Internal server error
  */
 router.post('/', 
+  ensureAdmin, // Requiere autenticación de admin
   validate(bookValidationSchema.create), // Valida todos los campos requeridos
   createBook
 );
@@ -588,30 +570,8 @@ router.post('/',
  *                   $ref: '#/components/schemas/Book'
  *       400:
  *         description: Invalid book ID
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "ID de libro no válido"
  *       404:
  *         description: Book not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "Libro no encontrado"
  *       500:
  *         description: Server error
  */
@@ -627,6 +587,8 @@ router.get('/:id',
  *     summary: Update a book
  *     tags: [Books]
  *     description: Updates any field of a book
+ *     security:
+ *       - GoogleOAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -673,21 +635,12 @@ router.get('/:id',
  *     responses:
  *       200:
  *         description: Book updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Libro actualizado exitosamente"
- *                 data:
- *                   $ref: '#/components/schemas/Book'
  *       400:
  *         description: Invalid ID or validation error
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin access required
  *       404:
  *         description: Book not found
  *       409:
@@ -696,6 +649,7 @@ router.get('/:id',
  *         description: Server error
  */
 router.put('/:id', 
+  ensureAdmin, // Requiere autenticación de admin
   validateObjectId('id'),
   validate(bookValidationSchema.update),
   updateBook
@@ -708,6 +662,8 @@ router.put('/:id',
  *     summary: Delete a book
  *     tags: [Books]
  *     description: Completely removes a book from the inventory
+ *     security:
+ *       - GoogleOAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -720,42 +676,22 @@ router.put('/:id',
  *     responses:
  *       200:
  *         description: Book deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Libro eliminado exitosamente"
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     title:
- *                       type: string
- *                     author:
- *                       type: string
  *       400:
  *         description: Invalid book ID
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin access required
  *       404:
  *         description: Book not found
  *       500:
  *         description: Server error
  */
 router.delete('/:id', 
+  ensureAdmin, // Requiere autenticación de admin
   validateObjectId('id'),
   deleteBook
 );
-
-/**
- * RUTAS ESPECIALES CON ID
- * Propósito: Operaciones específicas sobre libros individuales
- */
 
 /**
  * @swagger
@@ -764,6 +700,8 @@ router.delete('/:id',
  *     summary: Update book stock
  *     tags: [Books]
  *     description: Specific inventory management (add, reduce, set stock)
+ *     security:
+ *       - GoogleOAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -797,32 +735,17 @@ router.delete('/:id',
  *     responses:
  *       200:
  *         description: Stock updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 data:
- *                   $ref: '#/components/schemas/Book'
- *                 stockChange:
- *                   type: object
- *                   properties:
- *                     operation:
- *                       type: string
- *                     quantity:
- *                       type: integer
- *                     newStock:
- *                       type: integer
  *       400:
  *         description: Invalid data or operation
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Admin access required
  *       404:
  *         description: Book not found
  */
 router.patch('/:id/stock', 
+  ensureAdmin, // Requiere autenticación de admin
   validateObjectId('id'),
   // Validación específica para operaciones de stock
   (req, res, next) => {
@@ -857,83 +780,5 @@ router.patch('/:id/stock',
   },
   updateBookStock
 );
-
-/**
- * MIDDLEWARE DE VALIDACIÓN PERSONALIZADA
- * Propósito: Validaciones adicionales específicas para libros
- */
-
-/**
- * Middleware para validar fechas de publicación
- * Propósito: Asegura que las fechas sean coherentes
- */
-const validatePublishedDate = (req, res, next) => {
-  if (req.body.publishedDate) {
-    const publishedDate = new Date(req.body.publishedDate);
-    const now = new Date();
-    
-    if (publishedDate > now) {
-      return res.status(400).json({
-        success: false,
-        message: 'La fecha de publicación no puede ser futura'
-      });
-    }
-  }
-  next();
-};
-
-/**
- * Middleware para validar consistencia de stock y estado
- * Propósito: Mantiene coherencia entre stock y estado del libro
- */
-const validateStockConsistency = (req, res, next) => {
-  const { stock, status } = req.body;
-  
-  // Si se establece stock en 0, el estado debería ser 'agotado'
-  if (stock === 0 && status && status !== 'agotado') {
-    return res.status(400).json({
-      success: false,
-      message: 'Si el stock es 0, el estado debe ser "agotado"'
-    });
-  }
-  
-  // Si se establece estado como 'disponible', debe haber stock
-  if (status === 'disponible' && stock !== undefined && stock === 0) {
-    return res.status(400).json({
-      success: false,
-      message: 'No se puede marcar como disponible un libro sin stock'
-    });
-  }
-  
-  next();
-};
-
-// Aplicar middleware de validación adicional a rutas de creación y actualización
-router.use('/', validatePublishedDate);
-router.use(['/', '/:id'], validateStockConsistency);
-
-/**
- * MIDDLEWARE DE MANEJO DE ERRORES ESPECÍFICO PARA LIBROS
- * Propósito: Captura errores específicos de las rutas de libros
- */
-router.use((error, req, res, next) => {
-  // Log específico para errores de libros
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Error en rutas de libros:', error.message);
-  }
-  
-  // Manejo específico de errores de ISBN duplicado
-  if (error.code === 11000 && error.keyPattern && error.keyPattern.isbn) {
-    return res.status(409).json({
-      success: false,
-      message: 'Ya existe un libro con este ISBN',
-      field: 'isbn',
-      value: error.keyValue.isbn
-    });
-  }
-  
-  // Pasar el error al middleware global de manejo de errores
-  next(error);
-});
 
 module.exports = router;
