@@ -32,14 +32,51 @@ const { swaggerUi, specs } = require('./config/swagger');
 const app = express();
 
 /**
+ * CONFIGURACIÓN DE CORS MEJORADA
+ * Propósito: Permitir acceso desde Swagger UI y otros dominios
+ */
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'https://cse-341-project2-jjv7.onrender.com',
+    'https://cse-341-project2-jjv7.onrender.com/api-docs'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With', 
+    'Content-Type', 
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'Pragma'
+  ],
+  optionsSuccessStatus: 200
+};
+
+/**
  * MIDDLEWARE DE SEGURIDAD BÁSICO
  */
 
 // Helmet - Headers de seguridad
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 
-// CORS - Permitir acceso desde otros dominios
-app.use(cors());
+// CORS - Aplicar configuración mejorada
+app.use(cors(corsOptions));
+
+// Manejar preflight requests explícitamente
+app.options('*', cors(corsOptions));
 
 // Rate Limiting SIMPLIFICADO (sin configuración personalizada problemática)
 const limiter = rateLimit({
